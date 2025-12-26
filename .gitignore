@@ -1,0 +1,8 @@
+fe/node_modules/
+air_pollution/.env
+air_pollution/.venv/
+
+**/migrations/
+**/__pycache__/
+**/*.pyc
+.vscode/

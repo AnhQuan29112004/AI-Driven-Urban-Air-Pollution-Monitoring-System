@@ -1,0 +1,13 @@
+FROM air-pollution 
+
+WORKDIR /app
+
+# Chỉ copy files cần runtime
+COPY air_pollution/ ./air_pollution/
+COPY manage.py run.sh .env ./
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/air_pollution
+
+ENTRYPOINT ["/bin/bash", "-c", "/app/run.sh"]

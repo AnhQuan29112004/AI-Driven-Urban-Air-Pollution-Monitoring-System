@@ -1,0 +1,38 @@
+# Dockerfile.base (multi-stage)
+FROM python:3.11-slim-bookworm AS builder
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        python3-dev \
+        default-libmysqlclient-dev \
+        pkg-config \
+        libssl-dev \
+        libsasl2-dev \
+        libzstd-dev && \
+    python -m venv /venv && \
+    /venv/bin/pip install --upgrade pip
+
+# COPY requirements-ai.txt ./
+# RUN /venv/bin/pip install --no-cache-dir -r requirements-ai.txt
+
+COPY requirements.txt ./
+RUN /venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Stage cuối: Chỉ copy venv và clean up
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+COPY --from=builder /venv /venv
+
+# Install runtime deps nếu cần (nhưng hầu hết đã ở venv)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        default-libmysqlclient-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get autoremove -y
+
+ENV PATH="/venv/bin:$PATH"

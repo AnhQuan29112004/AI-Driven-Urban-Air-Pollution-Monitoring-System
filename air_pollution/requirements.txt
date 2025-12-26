@@ -1,0 +1,57 @@
+django-environ
+djangorestframework==3.16.0 
+djangorestframework-simplejwt
+django-redis
+django-cors-headers
+drf-yasg[swagger-ui]
+python-dotenv==1.0.0
+django==5.2.7
+mysqlclient==2.2.0
+python-jose[cryptography]==3.3.0
+
+django-summernote
+
+requests
+djangorestframework-camel-case
+
+unidecode
+user-agents
+ua-parser
+pyyaml
+Pillow
+redis
+shortuuid
+google-auth
+celery
+holidays
+confluent_kafka
+
+channels 
+uvicorn
+channels-redis
+
+#serve staticfile
+whitenoise
+aioredis
+
+
+# MQTT
+paho-mqtt==2.1.0
+
+# Data Science / ML
+pandas==2.2.3
+numpy==2.1.2
+matplotlib==3.9.2
+seaborn==0.13.2
+scikit-learn==1.5.2
+prophet==1.1.5  # Facebook Prophet, rất ổn định cho time-series
+
+# Database
+# psycopg2-binary==2.9.9  # Nếu chuyển sang PostgreSQL sau này (khuyến nghị cho production)
+
+# Utils
+# gunicorn==23.0.0  # Deploy sau này
+
+# Optional sau này
+flower==2.0.1  # Monitor Celery
+# daphne==4.1.0   # ASGI cho Channels

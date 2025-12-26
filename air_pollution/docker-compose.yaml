@@ -1,0 +1,215 @@
+services:
+  mysql-air-pollution-db:
+    image: mysql:8.0
+    container_name: mysql-air-pollution-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DEV_DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - air-pollution-network
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --bind-address=0.0.0.0
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    #giói hạn logging (json)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  redis_air_pollution:
+    image: redis:alpine
+    container_name: redis_air_pollution
+    ports:
+      - "6379:6379"
+    networks:
+      - air-pollution-network
+    volumes:
+      - redis_data_file_dev:/var/lib/redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # kafka_air_pollution:
+  #   image: confluentinc/cp-kafka:7.6.0
+  #   container_name: kafka_air_pollution
+  #   depends_on:
+  #     - redis_air_pollution
+  #   ports:
+  #     - "9092:9092"
+  #     - "29092:29092"
+  #   environment:
+  #     KAFKA_NODE_ID: 1
+  #     KAFKA_PROCESS_ROLES: 'broker,controller'
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT'
+  #     KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092'
+  #     KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka_air_pollution:9092,EXTERNAL://localhost:29092'
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+  #     KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+  #     KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka_air_pollution:9093'
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #     KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  #     CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    
+  #   volumes:
+  #     - kafka-data:/var/lib/kafka/data
+  #   networks:
+  #     - air-pollution-network
+  #   healthcheck:
+  #     test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 60s
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  
+  # run_consumer:
+  #   build: .
+  #   container_name: kafka_consumer_air_pollution
+  #   entrypoint: ["/bin/bash", "-c"]
+  #   command: >
+  #     python manage.py migrate --noinput &&
+  #     python manage.py create_kafka_topic &&
+  #     python manage.py kafka_consumer
+  #   volumes:
+  #     - .:/app
+  #     - ./.env:/app/.env
+  #   environment:
+  #     KAFKA_BOOTSTRAP_SERVERS: kafka_air_pollution:9092
+  #     PYTHONUNBUFFERED: 1
+  #     DJANGO_SETTINGS_MODULE: air_pollution_management.settings
+  #   depends_on:
+  #     kafka_air_pollution:
+  #       condition: service_healthy
+  #     redis_air_pollution:
+  #       condition: service_healthy
+  #     mysql-air-pollution-db:
+  #       condition: service_healthy
+  #     be:
+  #       condition: service_started
+  #   networks:
+  #     - air-pollution-network
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+  be-air-pollution:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: air_pollution_management_be
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql-air-pollution-db:
+        condition: service_healthy
+      redis_air_pollution:
+        condition: service_healthy
+      # kafka_air_pollution:
+      #   condition: service_healthy
+    networks:
+      - air-pollution-network
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    env_file:
+    - .env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery_air_pollution:
+    build:
+      context: .
+      dockerfile: dockerfile.celery
+    container_name: celery_air_pollution
+    volumes:
+      - .:/app
+      - ./.env:/app/.env
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL_DEV}
+      # KAFKA_BROKER: kafka_air_pollution:9092
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - redis_air_pollution
+      - be-air-pollution
+    restart: always
+    networks:
+      - air-pollution-network
+    command: ["celery", "-A", "air_pollution_management", "worker", "--loglevel=INFO"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery_beat_air_pollution:
+    build:
+      context: .
+      dockerfile: dockerfile.celery
+    container_name: celery_beat_air_pollution
+    volumes:
+      - .:/app
+      - ./.env:/app/.env
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL_DEV}
+      # KAFKA_BROKER: kafka_air_pollution:9092
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - redis_air_pollution
+      - be-air-pollution
+    restart: always
+    networks:
+      - air-pollution-network
+    command: ["celery", "-A", "air_pollution_management", "beat", "--loglevel=INFO"]
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mysql-data:
+  redis_data_file_dev:
+
+networks:
+  air-pollution-network:
+    driver: bridge

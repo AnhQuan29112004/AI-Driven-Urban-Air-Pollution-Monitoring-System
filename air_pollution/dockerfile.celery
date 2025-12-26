@@ -1,0 +1,14 @@
+FROM air-pollution
+
+WORKDIR /app
+
+# Chỉ copy files cần
+COPY air_pollution/ ./air_pollution/
+COPY manage.py run.sh .env ./
+
+RUN chmod +x /app/run.sh
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/air_pollution
+
+# ENTRYPOINT ["celery", "-A", "air_pollution", "worker", "--loglevel=INFO"]
