@@ -173,7 +173,7 @@ services:
     restart: always
     networks:
       - air-pollution-network
-    command: ["celery", "-A", "air_pollution_management", "worker", "--loglevel=INFO"]
+    command: ["celery", "-A", "air_pollution", "worker", "--loglevel=INFO"]
     logging:
       driver: "json-file"
       options:
@@ -198,13 +198,43 @@ services:
     restart: always
     networks:
       - air-pollution-network
-    command: ["celery", "-A", "air_pollution_management", "beat", "--loglevel=INFO"]
+    command: ["celery", "-A", "air_pollution", "beat", "--loglevel=INFO"]
 
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"  # MQTT
+      - "9001:9001"  # websocket nếu cần
+    volumes:
+      - ./mosquitto/config:/mosquitto/config  # tạo folder mosquitto/config với mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    depends_on:
+      - be-air-pollution
+    restart: unless-stopped
+    networks:
+      - air-pollution-network
+
+  # mlflow:
+  #   image: ghcr.io/mlflow/mlflow:v2.10.0  # hoặc build custom nếu cần
+  #   command: mlflow server --backend-store-uri mysql://air_user:air_pass@mysql:3306/mlflow_db --default-artifact-root /mlruns --host 0.0.0.0
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - mlruns:/mlruns
+  #   environment:
+  #     - MLFLOW_TRACKING_USERNAME=admin  # optional auth
+  #     - MLFLOW_TRACKING_PASSWORD=admin
+  #   depends_on:
+  #     - mysql
+  #   restart: unless-stopped
 
 volumes:
   mysql-data:

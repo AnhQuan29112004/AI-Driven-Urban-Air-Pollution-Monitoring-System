@@ -18,6 +18,9 @@ RUN apt-get update && \
 # COPY requirements-ai.txt ./
 # RUN /venv/bin/pip install --no-cache-dir -r requirements-ai.txt
 
+# Install PyTorch CPU first (massive size reduction vs default CUDA version)
+RUN /venv/bin/pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt ./
 RUN /venv/bin/pip install --no-cache-dir -r requirements.txt
 
