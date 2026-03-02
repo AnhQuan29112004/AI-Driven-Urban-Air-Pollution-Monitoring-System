@@ -1,7 +1,10 @@
-fe/node_modules/
+frontend/air_pollution_fe/node_modules/
 air_pollution/.env
 air_pollution/.venv/
 air_pollution/data/
+air_pollution/notebook/.ipynb_checkpoints
+jupyter
+anaconda_projects
 
 **/migrations/
 **/__pycache__/
