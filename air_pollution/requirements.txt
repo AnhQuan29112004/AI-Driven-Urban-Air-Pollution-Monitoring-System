@@ -77,7 +77,7 @@ folium
 # Data Quality / MLOps
 # =========================
 mlflow
-great-expectations
+great_expectations[cli]
 evidently
 prefect
 dvc
