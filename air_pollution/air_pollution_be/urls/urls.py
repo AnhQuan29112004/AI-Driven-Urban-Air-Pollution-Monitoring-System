@@ -1,7 +1,7 @@
 from django.urls import path
 from air_pollution_be.views.auth_view import *
 from air_pollution_be.views.user_view import *
-
+from air_pollution_be.views.dashboard_view import *
 
 
 urlpatterns = [
@@ -20,5 +20,6 @@ urlpatterns = [
     path("update/user/<int:id>/", update_user_profile),
     path("delete/user/<int:id>/", delete_user),
     path('upload-image/', upload_image),
-    path('change-password/', change_password)
+    path('change-password/', change_password),
+    path('test-api/', test_api)
 ]
