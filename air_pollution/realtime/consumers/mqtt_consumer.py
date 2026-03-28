@@ -46,7 +46,7 @@ class MQTTConsumer:
         try:
             payload = json.loads(message.payload.decode('utf-8'))
             logger.info(f"Received message: {payload}")
-            from air_pollution.realtime.tasks.air_quality_task import ingest_air_quality_data
+            from realtime.tasks.air_quality_task import ingest_air_quality_data
             ingest_air_quality_data.delay(payload)
         except Exception as e:
             logger.error(f'Error processing message: {e}')
@@ -88,5 +88,18 @@ def main():
         consumer.disconnect()
 
 if __name__ == "__main__":
+    import os
+    import sys
+    
+    # ======== CHỈ DÙNG CHO MỤC ĐÍCH TEST ĐỘC LẬP ========
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if BASE_DIR not in sys.path:
+        sys.path.append(BASE_DIR)
+        
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'air_pollution.settings')
+    import django
+    django.setup()
+    # ====================================================
+
     main()
         
