@@ -46,6 +46,8 @@ class MQTTConsumer:
         try:
             payload = json.loads(message.payload.decode('utf-8'))
             logger.info(f"Received message: {payload}")
+            from air_pollution.realtime.tasks.air_quality_task import ingest_air_quality_data
+            ingest_air_quality_data.delay(payload)
         except Exception as e:
             logger.error(f'Error processing message: {e}')
 
