@@ -16,13 +16,13 @@ description: >-
 
 ## Backend
 
-- **Celery**: consume MQTT (or bridge via management command) → compute **AQI (max sub-index)** → write MySQL.
+- **Django/Celery**: consume MQTT via background worker/thread → compute **AQI (max sub-index)** → write MySQL & push realtime payload to Django Channels WebSocket.
 - Optional: Great Expectations or **Pydantic** validation on payload before persistence.
 - Log realtime **bias hints** (e.g. urban noise) as MLflow params when that integration exists.
 
 ## Frontend
 
-- Angular: **MQTT.js** subscription → update dashboard (colors by AQI band); avoid blocking the main thread on heavy parsing.
+- Angular: **Native WebSocket** subscription to Django Channels → update dashboard (colors by AQI band); avoid blocking the main thread on heavy parsing. (⚠️ Do NOT expose MQTT directly to frontend to ensure security).
 
 ## Testing (Week 2 target)
 
