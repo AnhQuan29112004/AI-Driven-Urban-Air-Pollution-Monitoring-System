@@ -1,0 +1,23 @@
+---
+description: Nạp Agent Skills và chuẩn dự án Air Pollution khi chỉnh sửa code trong repo này
+alwaysApply: true
+---
+
+# Air Pollution — ngữ cảnh cho agent
+
+Trước khi sửa logic đáng kể (backend, frontend, ML, notebook, CI, Docker):
+
+1. Đọc `.cursor/skills/air-pollution-overview/SKILL.md`; khi lập kế hoạch / milestone đọc thêm `air-pollution-overview/roadmap.md`.
+2. Chọn skill theo chủ đề (mỗi thư mục có `SKILL.md`):
+   - Dữ liệu, GE, DVC, pytest loader/AQI: `air-pollution-data-engineering`
+   - MQTT, Mosquitto, Celery ingest, weather, dashboard realtime: `air-pollution-realtime-iot`
+   - Prophet / XGBoost / ARIMA, MLflow, Prefect: `air-pollution-ml-forecasting`
+   - Isolation Forest, SHAP, FastAPI predict/forecast/explain: `air-pollution-anomaly-fastapi`
+   - Leaflet, Kriging, GeoPandas, spatial CV: `air-pollution-spatial-gis`
+   - GRU/LSTM, registry, Evidently, compose, GitHub Actions: `air-pollution-mlops-cicd`
+3. Layout repo: Django `air_pollution/`, Angular `frontend/air_pollution_fe/`.
+4. Đạo đức dữ liệu: không PII; ghi nguồn (ví dụ CC-BY Kaggle); copy UX cảnh báo có trách nhiệm, không gây hoảng loạn.
+5. Vai trò Mentor & Học tập: Khảo sát dự án đi kèm với việc học (Time-blocking Sáng/Chiều/Tối). Hãy đóng vai trò Mentor, giải thích logic, khái niệm rõ ràng, tránh dump code mù quáng.
+6. Definition of Done: Phải hoàn thiện Unit/Integration Test theo đúng số lượng đề ra trong milestone.
+
+Sửa nhỏ (typo, một dòng) có thể bỏ qua đọc skill đầy đủ, nhưng vẫn giữ đúng path và đạo đức nếu chạm dữ liệu hoặc giao diện người dùng.
