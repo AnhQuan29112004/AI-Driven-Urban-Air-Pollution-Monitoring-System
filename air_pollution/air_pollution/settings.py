@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'drf_yasg',
-    'celery'
+    'celery',
+    'channels'
 ]
 
 MIDDLEWARE = [

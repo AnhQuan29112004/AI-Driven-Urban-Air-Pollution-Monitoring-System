@@ -51,7 +51,7 @@ class MQTTConsumer:
         except Exception as e:
             logger.error(f'Error processing message: {e}')
 
-    def on_disconnect(self, client, userdata, reason_code, properties):
+    def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
         self.is_connected = False
         logger.warning('Disconnected, reconnecting...')
         time.sleep(self.reconnect_delay)

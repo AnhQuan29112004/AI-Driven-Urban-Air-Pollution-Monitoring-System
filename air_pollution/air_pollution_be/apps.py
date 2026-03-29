@@ -7,3 +7,11 @@ class UserConfig(AppConfig):
 
     def ready(self):
         import air_pollution_be.signal
+        from air_pollution_be.service.mqtt_service import MQTTServiceClass
+
+        # CHÚ THÍCH & GIẢI THÍCH (Dành cho ASGI/Uvicorn):
+        # Vì bạn chạy môi trường thông qua ASGI Uvicorn (hoặc gunicorn),
+        # những application server này không sử dụng biến môi trường 'RUN_MAIN' giống Django Dev Server.
+        # Ở môi trường Uvicorn, quá trình khởi tạo ứng dụng thường nằm mượt mà trên worker process
+        # và đã được an toàn thông qua Thread Lock ở bên trong MQTTServiceClass.
+        MQTTServiceClass.start_listening()

@@ -25,11 +25,14 @@ from middleware.jwt_middleware_socket import JWTAuthMidderwareSocket
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": JWTAuthMidderwareSocket(
-        AuthMiddlewareStack(
-            URLRouter(
-                websocket_urlpatterns
-            )
-        )
+    # "websocket": JWTAuthMidderwareSocket(
+    #     AuthMiddlewareStack(
+    #         URLRouter(
+    #             websocket_urlpatterns      # Sẽ dùng nếu hệ thống có auth
+    #         )
+    #     )
+    # ),
+    "websocket": URLRouter(
+        websocket_urlpatterns
     ),
 })
