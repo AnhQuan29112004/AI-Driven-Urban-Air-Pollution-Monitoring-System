@@ -16,5 +16,6 @@ class AirData(models.Model):
     aqi_category = models.CharField(max_length=20, null=True, blank=True)
     temperature = models.FloatField(null=True, blank=True)
     humidity = models.FloatField(null=True, blank=True)
+    wind_speed = models.FloatField(null=True, blank=True)
     def __str__(self):
         return f"{self.location} - {self.timestamp}"
