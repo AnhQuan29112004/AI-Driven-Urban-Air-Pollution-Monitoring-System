@@ -143,6 +143,7 @@ services:
       - air-pollution-network
     environment:
       - PYTHONUNBUFFERED=1
+      - START_MQTT_LISTENER=1
     restart: always
     env_file:
     - .env
@@ -167,6 +168,7 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL_DEV}
       # KAFKA_BROKER: kafka_air_pollution:9092
       PYTHONUNBUFFERED: 1
+      START_MQTT_LISTENER: "0"
     depends_on:
       - redis_air_pollution
       - be-air-pollution
@@ -192,6 +194,7 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL_DEV}
       # KAFKA_BROKER: kafka_air_pollution:9092
       PYTHONUNBUFFERED: 1
+      START_MQTT_LISTENER: "0"
     depends_on:
       - redis_air_pollution
       - be-air-pollution
