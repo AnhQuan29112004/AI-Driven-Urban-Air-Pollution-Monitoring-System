@@ -13,4 +13,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", 'air_pollution.settings')
 
 app = Celery('air_pollution')
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
+app.autodiscover_tasks([
+    'air_pollution_be.realtime',
+    # Thêm module mới ở đây, ví dụ:
+    # 'air_pollution_be.analytics',
+    # 'air_pollution_be.notification',
+])
