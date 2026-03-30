@@ -10,6 +10,7 @@ import re
 from django.contrib.contenttypes.models import ContentType
 import logging
 from constants.error_codes import ErrorCodes
+from constants.constants import Constants
 import difflib
 import datetime
 from datetime import time, datetime
@@ -27,6 +28,8 @@ import urllib.parse
 import urllib.request
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect
+import numpy as np
+import pandas as pd
 
 
 
@@ -159,6 +162,63 @@ class Utils:
             
         except Exception as e:
             raise e
+    
+    # utils/aqi_calculator.py
+    @staticmethod
+    def calculate_aqi_sub_index(concentration: float, breakpoints: list) -> float:
+        """Tính sub-index cho một chất theo breakpoints"""
+        if pd.isna(concentration) or concentration < 0:
+            return np.nan
         
+        # Nếu vượt ngưỡng cao nhất → trả về mức Hazardous max
+        if concentration > breakpoints[-1][1]:
+            return breakpoints[-1][3]
+        
+        for c_low, c_high, i_low, i_high in breakpoints:
+            if c_low <= concentration <= c_high:
+                return ((i_high - i_low) / (c_high - c_low)) * (concentration - c_low) + i_low
+        
+        return np.nan
+
+    @staticmethod
+    def calculate_aqi(pollutants: dict) -> float:
+        """Tính AQI = max các sub-index"""
+        
+        BREAKPOINT_MAP = {
+            "co": Constants.CO_BREAKPOINTS,
+            "no2": Constants.NO2_BREAKPOINTS,
+            "o3": Constants.O3_BREAKPOINTS,
+            "pm2.5": Constants.PM25_BREAKPOINTS,
+            "pm10":Constants.PM10_BREAKPOINTS,
+            "so2":Constants.SO2_BREAKPOINTS
+        }
+
+        sub_indices = []
+
+        for name, value in pollutants.items():
+            if name in BREAKPOINT_MAP:
+                bp = BREAKPOINT_MAP[name]
+                sub = Utils.calculate_aqi_sub_index(value, bp)
+                sub_indices.append(sub)
+
+        return max(sub_indices) if sub_indices else 0
+
+    @staticmethod
+    def get_aqi_category(aqi: float) -> str:
+        """Chuyển AQI thành category"""
+        if pd.isna(aqi):
+            return "Unknown"
+        if aqi <= 50:
+            return "Good"
+        elif aqi <= 100:
+            return "Moderate"
+        elif aqi <= 150:
+            return "Unhealthy for Sensitive"
+        elif aqi <= 200:
+            return "Unhealthy"
+        elif aqi <= 300:
+            return "Very Unhealthy"
+        else:
+            return "Hazardous"
     
     

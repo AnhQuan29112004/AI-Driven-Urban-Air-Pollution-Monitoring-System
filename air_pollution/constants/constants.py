@@ -1,141 +1,54 @@
 class Constants:
-    PATH_DB_MAP = {
-        "/api/user/": "user",
-        "/api/sp/": "user",
-        "/api/excel/": "user",
-        "/api/token/": "user",
-        "/api/companies/": "user",
-        "/api/social-media/": "user",
-        "/api/department/": "user",
-        "/api/permission/": "user",
-        "/api/group/": "user",
-        "/api/email/": "email",
-        "/api/file/": "file",
-        "/api/address/": "address",
-        "/api/customer/": "customer",
-        "/api/tables/": "dynamic_field",
-        # "/api/tables/": "user",
-    }
-
-    LEVEL_LOG_CHOICES = [
-        ("DEBUG", "Debug"),
-        ("INFO", "Info"),
-        ("WARNING", "Warning"),
-        ("ERROR", "Error"),
-        ("CRITICAL", "Critical"),
+    PM25_BREAKPOINTS = [
+        (0.0, 9.0, 0, 50),
+        (9.1, 35.4, 51, 100),
+        (35.5, 55.4, 101, 150),
+        (55.5, 125.4, 151, 200),
+        (125.5, 225.4, 201, 300),
+        (225.5, 325.4, 301, 400),
+        (325.5, 500.4, 401, 500)
+    ]
+    PM10_BREAKPOINTS = [
+        (0, 54, 0, 50),
+        (55, 154, 51, 100),
+        (155, 254, 101, 150),
+        (255, 354, 151, 200),
+        (355, 424, 201, 300),
+        (425, 504, 301, 400),
+        (505, 604, 401, 500)
+    ]
+    CO_BREAKPOINTS = [
+        (0.0, 4.4, 0, 50),
+        (4.5, 9.4, 51, 100),
+        (9.5, 12.4, 101, 150),
+        (12.5, 15.4, 151, 200),
+        (15.5, 30.4, 201, 300),
+        (30.5, 40.4, 301, 400),
+        (40.5, 50.4, 401, 500)
     ]
 
-    APP_LABEL_DB_MAP = {
-        "user": "user",
-        "email_integrated": "email",
-        "file": "file",
-        "address": "address",
-        "customer": "customer",
-        "dynamic_field": "dynamic_field",
-    }
-    USER_STATUS = (
-        (1, "Active"),
-        (2, "Inactive"),
-        (3, "Waiting"),
-    )
-    NEWS_STATUS = (
-        (1, "Waiting"),
-        (2, "Accept"),
-        (3, "Reject"),
-    )
-    ROLE = (
-        (1, "Admin"),
-        (2, "Mod"),
-        (3, "User"),
-    )
-    APP_TYPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-    APP_STATUS = (
-        (1, "Active"),
-        (2, "Inactive"),
-        (3, "Disconnect"),
-    )
-    INDUSTRIES = [
-        (1, "Finance"),
-        (2, "Expand"),
-        
+    NO2_BREAKPOINTS = [
+        (0.0, 0.053, 0, 50),
+        (0.054, 0.1, 51, 100),
+        (0.101, 0.36, 101, 150),
+        (0.361, 0.649, 151, 200),
+        (0.65, 1.249, 201, 300),
+        (1.25, 1.649, 301, 400),
+        (1.65, 2.049, 401, 500)
     ]
-    PRODCUT_CATEGORY_STATUS = (
-        (1, "Display"),
-        (2, "Hide"),
-    )
-    USER_RANK = (
-        (1, "Silver"),
-        (2, "Gold"),
-        (3, "Platinum"),
-        (4, "Diamond"),
-        (5, "White"),
-
-    )
-
-    DATA_TYPES = [
-        ("char", "Text"),
-        ("varchar", "Variable Character"),
-        ("integer", "Integer"),
-        ("bigint", "Big Integer"),
-        ("smallint", "Small Integer"),
-        ("float", "Float"),
-        ("double", "Double Precision Float"),
-        ("decimal", "Decimal"),
-        ("numeric", "Numeric"),
-        ("boolean", "Boolean"),
-        ("datetime", "DateTime"),
-        ("timestamp", "Timestamp"),
-        ("enum", "Enum"),
-        ("array", "Array"),
+    SO2_BREAKPOINTS = [
+        (0, 35, 0, 50),
+        (36, 75, 51, 100),
+        (76, 185, 101, 150),
+        (186, 304, 151, 200),
+        (305, 604, 201, 300),
+        (605, 804, 301, 400),
+        (805, 1004, 401, 500)
     ]
-
-    RELATION_TYPES = [
-        ("foreignkey", "Foreign Key"),
-        ("manytoone", "Many-to-One"),
-        ("onetoone", "One-to-One"),
-        ("manytomany", "Many-to-Many"),
-        ("social_media", "Social-Media"),
+    O3_BREAKPOINTS = [
+        (0.000, 0.054, 0, 50),
+        (0.055, 0.070, 51, 100),
+        (0.071, 0.085, 101, 150),
+        (0.086, 0.105, 151, 200),
+        (0.106, 0.200, 201, 300)
     ]
-    
-    PRODUCT_STATUS = [
-        ('in_stock', 'In Stock'),
-        ('out_of_stock', 'Out Of Stock'),
-    ]
-
-
-    CHANGE_PASSWORD = "CHANGE_PASSWORD"
-    ADMIN_REGISTER_USER = "ADMIN_REGISTER_USER"
-    USER_CREATE_NEWS = "USER_CREATE_NEWS"
-    USER_UPDATE_NEWS = "USER_UPDATE_NEWS"
-    USER_DELETE_NEWS = "USER_DELETE_NEWS"
-    USER_UPDATE_NEWS_CATEGORY = "USER_UPDATE_NEWS_CATEGORY"
-    USER_CREATE_NEWS_CATEGORY = "USER_CREATE_NEWS_CATEGORY"
-    USER_DELETE_NEWS_CATEGORY = "USER_DELETE_NEWS_CATEGORY"
-    USER_UPDATE_PRODUCT_CATEGORY = "USER_UPDATE_PRODUCT_CATEGORY"
-    USER_CREATE_FEEDBACK = "USER_CREATE_FEEDBACK"
-    USER_UPDATE_FEEDBACK = "USER_UPDATE_FEEDBACK"
-    USER_DELETE_FEEDBACK = "USER_DELETE_FEEDBACK"
-    USER_REGISTER = "USER_REGISTER"
-    REGISTER = "REGISTER"
-    EDIT_USER_PROFILE = "EDIT_USER_PROFILE"
-    EMAIL_DEFAULT_TEMPLATE_ADMIN_REGISTER_USER = "Default Admin Register User Template"
-    EMAIL_DEFAULT_FORGOT_PASSWORD_TEMPLATE = "Default Forgot Password Template"
-    CHANGE_PASSWORD_TIME = 1800
-    ATTEMPT_BLOCK_USER = 1800
-    ADMIN_REGISTER_USER_TIME = 259200
-    ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc", ".xlsx", ".xls"]
-    MAX_FILE_SIZE_MB = 20
-    ALLOWED_AVATAR_TYPES = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/bmp",
-    "image/tiff",
-    "image/webp",
-    "image/svg+xml",  
-    "image/apng"      
-    ]
-    ALLOWED_FILE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "txt", "zip", "rar"]
-    MAX_AVATAR_SIZE_MB = 5
-    JWT_EXPIRATION = 1800
-    
