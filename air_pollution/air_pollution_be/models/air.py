@@ -5,7 +5,7 @@ class AirData(models.Model):
     location = models.CharField(max_length=100)  # e.g., "Hanoi - Cau Giay"
     lat = models.FloatField(null=True, blank=True)
     lng = models.FloatField(null=True, blank=True)
-    pm25 = models.FloatField()
+    pm25 = models.FloatField(null=True, blank=True)
     pm10 = models.FloatField(null=True, blank=True)
     no2 = models.FloatField(null=True, blank=True)
     co = models.FloatField(null=True, blank=True)
@@ -19,3 +19,6 @@ class AirData(models.Model):
     wind_speed = models.FloatField(null=True, blank=True)
     def __str__(self):
         return f"{self.location} - {self.timestamp}"
+    
+    class Meta:
+        db_table = 'AirData'
