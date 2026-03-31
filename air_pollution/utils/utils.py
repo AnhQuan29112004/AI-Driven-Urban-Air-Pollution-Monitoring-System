@@ -167,6 +167,7 @@ class Utils:
     @staticmethod
     def calculate_aqi_sub_index(concentration: float, breakpoints: list) -> float:
         """Tính sub-index cho một chất theo breakpoints"""
+        print("check data: ",concentration, breakpoints)
         if pd.isna(concentration) or concentration < 0:
             return np.nan
         
@@ -175,15 +176,22 @@ class Utils:
             return breakpoints[-1][3]
         
         for c_low, c_high, i_low, i_high in breakpoints:
-            if c_low <= concentration <= c_high:
-                return ((i_high - i_low) / (c_high - c_low)) * (concentration - c_low) + i_low
+            if concentration <= c_high:
+                # Tránh lỗi chia cho 0 nếu c_high == c_low
+                if c_high == c_low:
+                    return i_low
+                
+                # Tính AQI và giới hạn không dưới 0
+                print('check item calc: ',i_high, i_low,c_high ,c_low,concentration )
+                aqi = ((i_high - i_low) / (c_high - c_low)) * (concentration - c_low) + i_low
+                return max(0, aqi)
         
         return np.nan
 
     @staticmethod
     def calculate_aqi(pollutants: dict) -> float:
         """Tính AQI = max các sub-index"""
-        
+        print('Check parram: ', pollutants)
         BREAKPOINT_MAP = {
             "co": Constants.CO_BREAKPOINTS,
             "no2": Constants.NO2_BREAKPOINTS,
@@ -196,10 +204,13 @@ class Utils:
         sub_indices = []
 
         for name, value in pollutants.items():
-            if name in BREAKPOINT_MAP:
+            if name in BREAKPOINT_MAP and value is not None:
                 bp = BREAKPOINT_MAP[name]
                 sub = Utils.calculate_aqi_sub_index(value, bp)
-                sub_indices.append(sub)
+                if not pd.isna(sub):
+                    sub_indices.append(sub)
+                    
+        print('Calculated sub indices:', sub_indices)
 
         return max(sub_indices) if sub_indices else 0
 

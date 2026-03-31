@@ -15,30 +15,33 @@ def ingest_air_quality_data(self, payload: dict):
         aqi_value = Utils.calculate_aqi({
             'co':payload.get('co', 0),
             'no2':payload.get('no2', 0),
-            'o3':payload.get('o3', 0)
+            'o3':payload.get('o3', 0),
+            "pm2.5": payload.get('pm2.5', 0),
+            "pm10":payload.get('pm10', 0),
+            "so2":payload.get('so2', 0)
         }
         )
 
         aqi_category = Utils.get_aqi_category(aqi_value)
 
-        air_data = AirData(
-            timestamp=payload.get('timestamp'),
-            lat=payload.get('lat'),
-            lng=payload.get('lon'),
-            location=payload.get('city', 'Hanoi'),
-            co=payload.get('co'),
-            no2=payload.get('no2'),
-            o3=payload.get('o3'),
-            temperature=payload.get('temperature'),
-            humidity=payload.get('humidity'),
-            wind_speed=payload.get('wind_speed'),
-            aqi=aqi_value,
-            aqi_category=aqi_category
-        )
+        # air_data = AirData(
+        #     timestamp=payload.get('timestamp'),
+        #     lat=payload.get('lat'),
+        #     lng=payload.get('lon'),
+        #     location=payload.get('city', 'Hanoi'),
+        #     co=payload.get('co'),
+        #     no2=payload.get('no2'),
+        #     o3=payload.get('o3'),
+        #     temperature=payload.get('temperature'),
+        #     humidity=payload.get('humidity'),
+        #     wind_speed=payload.get('wind_speed'),
+        #     aqi=aqi_value,
+        #     aqi_category=aqi_category
+        # )
         
-        air_data.save()
+        # air_data.save()
 
-        logger.info(f"✅ Saved to DB - AQI: {aqi_value:.1f} | Category: {aqi_category} | ID: {air_data.id}")
+        logger.info(f"✅ Saved to DB - AQI: {aqi_value:.1f} | Category: {aqi_category}")
 
         return {
             "status": "success",
