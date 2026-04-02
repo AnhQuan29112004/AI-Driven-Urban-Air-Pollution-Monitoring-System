@@ -172,6 +172,7 @@ services:
     depends_on:
       - redis_air_pollution
       - be-air-pollution
+      - mlflow
     restart: always
     networks:
       - air-pollution-network
@@ -198,6 +199,7 @@ services:
     depends_on:
       - redis_air_pollution
       - be-air-pollution
+      - mlflow
     restart: always
     networks:
       - air-pollution-network
@@ -225,19 +227,22 @@ services:
     networks:
       - air-pollution-network
 
-  # mlflow:
-  #   image: ghcr.io/mlflow/mlflow:v2.10.0  # hoặc build custom nếu cần
-  #   command: mlflow server --backend-store-uri mysql://air_user:air_pass@mysql:3306/mlflow_db --default-artifact-root /mlruns --host 0.0.0.0
-  #   ports:
-  #     - "5000:5000"
-  #   volumes:
-  #     - mlruns:/mlruns
-  #   environment:
-  #     - MLFLOW_TRACKING_USERNAME=admin  # optional auth
-  #     - MLFLOW_TRACKING_PASSWORD=admin
-  #   depends_on:
-  #     - mysql
-  #   restart: unless-stopped
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow:/mlflow
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow.db
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --allowed-hosts "*"
+    depends_on:
+      - be-air-pollution
+    restart: unless-stopped
+    networks:
+      - air-pollution-network
 
 volumes:
   mysql-data:
