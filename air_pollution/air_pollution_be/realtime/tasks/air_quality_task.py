@@ -47,7 +47,7 @@ def ingest_air_quality_data(self, payload: dict):
         #     aqi=aqi_value,
         #     aqi_category=aqi_category
         # )
-        
+        print('check bias: ', bias)
         # air_data.save()
         # MLflow logging
         with mlflow.start_run(run_name="realtime_hanoi"):

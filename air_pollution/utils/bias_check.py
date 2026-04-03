@@ -2,11 +2,12 @@
 import pandas as pd
 import logging
 from pathlib import Path
+import settings
 
 logger = logging.getLogger(__name__)
 
 class RealtimeBiasChecker:
-    def __init__(self, parquet_path: str = "../data/processed/hanoi_cleaned.parquet"):
+    def __init__(self, parquet_path: str = f"{settings.BASE_DIR}/data/processed/hanoi_cleaned.parquet"):
         self.parquet_path = parquet_path
         self.historical_means = {}
         self._load_historical_means()
