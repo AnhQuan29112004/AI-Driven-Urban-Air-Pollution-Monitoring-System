@@ -39,73 +39,99 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   }
   ngOnInit(): void {
-    this.dashBoardService.getTestApi().pipe(
-      takeUntil(
-        this.destroy$
-      )
+    //Lấy data mới nhất bằng API thay vì testApi
+    this.dashBoardService.getLatestApi().pipe(
+      takeUntil(this.destroy$)
     ).subscribe(res => {
-      this.response = res.data.test
-    })
+      if (res && res.data) {
+        this.updateDashboardData(res.data);
+      }
+    });
 
-    // Lắng nghe dữ liệu WebSocket từ Service đã được kết nối ở EmptyLayoutComponent
+    //Lấy data lịch sử 24h để vẽ biểu đồ
+    this.dashBoardService.getHistory24hApi().pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(res => {
+      if (res && res.data && Array.isArray(res.data)) {
+        const history = res.data.reverse();
+        this.trendData = [];
+        history.forEach((data: any) => {
+          this.pushToTrendData(data);
+        });
+        this.updateTrendLabels();
+      }
+    });
+
     this.dashBoardService.message$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(payload => {
       if (payload && payload.type === 'sensor_data') {
-        this.sensorData = payload.data;
-        this.pollutants = [
-          { name: 'PM2.5', value: payload.data['pm25'], unit: 'AQI' },
-          { name: 'PM10', value: payload.data['pm10'], unit: 'AQI' },
-          { name: 'NO2', value: payload.data['no2'], unit: 'AQI' },
-          { name: 'O3 (Ozone)', value: payload.data['o3'], unit: 'AQI' },
-          { name: 'CO', value: payload.data['co'], unit: 'AQI' },
-          { name: 'SO2', value: payload.data['so2'], unit: 'AQI' },
-        ].map(p => {
-          const val = Number(p.value);
-          const style = getAQIStyle(val);
-          const percentage = Math.min((val / 300) * 100, 100);
-          return { ...p, percentage, colorHex: style.color };
-        });
-        this.weather = [
-          { name: 'Temp', value:payload.data['temperature'] , icon: 'thermostat', color: 'secondary' },
-          { name: 'Humidity', value:payload.data['humidity'] , icon: 'humidity_mid', color: 'primary' },
-          { name: 'Wind', value:payload.data['wind_speed'] , icon: 'air', color: 'on-surface-variant' },
-        ];
-        this.AQI = payload.data['aqi'];
-        this.aqiStyle = getAQIStyle(Number(this.AQI));
-        
-        // Update trend data
-        const timestampStr = payload.data['timestamp'];
-        const timeLabel = timestampStr ? new Date(timestampStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-        const heightPercent = Math.min((Number(this.AQI) / 300) * 100, 100);
-        
-        this.trendData.push({
-          aqi: Number(this.AQI),
-          timestamp: timestampStr || new Date().toISOString(),
-          timeLabel,
-          colorHex: this.aqiStyle.color,
-          heightPercent
-        });
-        
-        if (this.trendData.length > 24) {
-          this.trendData.shift();
-        }
-        
-        // Update X-axis labels for trend chart
-        const labels = [];
-        const numLabels = 6;
-        if (this.trendData.length > 0) {
-            const step = Math.max(1, Math.floor(this.trendData.length / numLabels));
-            for (let i = 0; i < this.trendData.length; i += step) {
-              labels.push(this.trendData[i].timeLabel);
-            }
-            if (labels[labels.length - 1] !== this.trendData[this.trendData.length - 1].timeLabel) {
-               labels[labels.length - 1] = this.trendData[this.trendData.length - 1].timeLabel;
-            }
-        }
-        this.trendLabels = labels;
+        this.updateDashboardData(payload.data);
+        this.pushToTrendData(payload.data);
+        this.updateTrendLabels();
       }
     });
+  }
+
+  updateDashboardData(data: any) {
+    this.sensorData = data;
+    this.pollutants = [
+      { name: 'PM2.5', value: data['pm25'], unit: 'AQI' },
+      { name: 'PM10', value: data['pm10'], unit: 'AQI' },
+      { name: 'NO2', value: data['no2'], unit: 'AQI' },
+      { name: 'O3 (Ozone)', value: data['o3'], unit: 'AQI' },
+      { name: 'CO', value: data['co'], unit: 'AQI' },
+      { name: 'SO2', value: data['so2'], unit: 'AQI' },
+    ].map(p => {
+      const val = Number(p.value || 0);
+      const style = getAQIStyle(val);
+      const percentage = Math.min((val / 300) * 100, 100);
+      return { ...p, percentage, colorHex: style.color };
+    });
+    this.weather = [
+      { name: 'Temp', value: data['temperature'], icon: 'thermostat', color: 'secondary' },
+      { name: 'Humidity', value: data['humidity'], icon: 'humidity_mid', color: 'primary' },
+      { name: 'Wind', value: data['wind_speed'] || data['windSpeed'], icon: 'air', color: 'on-surface-variant' },
+    ];
+    this.AQI = data['aqi'] || '--';
+    if (this.AQI !== '--') {
+       this.aqiStyle = getAQIStyle(Number(this.AQI));
+    }
+  }
+
+  pushToTrendData(data: any) {
+    const timestampStr = data['timestamp'];
+    const timeLabel = timestampStr ? new Date(timestampStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const aqiNum = Number(data['aqi'] || 0);
+    const heightPercent = Math.min((aqiNum / 300) * 100, 100);
+    const style = getAQIStyle(aqiNum);
+    
+    this.trendData.push({
+      aqi: aqiNum,
+      timestamp: timestampStr || new Date().toISOString(),
+      timeLabel,
+      colorHex: style.color,
+      heightPercent
+    });
+    
+    if (this.trendData.length > 24) {
+      this.trendData.shift();
+    }
+  }
+
+  updateTrendLabels() {
+    const labels = [];
+    const numLabels = 6;
+    if (this.trendData.length > 0) {
+        const step = Math.max(1, Math.floor(this.trendData.length / numLabels));
+        for (let i = 0; i < this.trendData.length; i += step) {
+          labels.push(this.trendData[i].timeLabel);
+        }
+        if (labels[labels.length - 1] !== this.trendData[this.trendData.length - 1].timeLabel) {
+           labels[labels.length - 1] = this.trendData[this.trendData.length - 1].timeLabel;
+        }
+    }
+    this.trendLabels = labels;
   }
   ngOnDestroy(): void {
     this.destroy$.next('')

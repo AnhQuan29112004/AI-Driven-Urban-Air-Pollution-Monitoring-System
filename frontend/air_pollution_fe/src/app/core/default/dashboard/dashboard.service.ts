@@ -20,8 +20,16 @@ export class DashboardService {
   private connectionSubject$ = new BehaviorSubject<boolean>(false);
   connection$ = this.connectionSubject$.asObservable();
 
-  getTestApi(param?: any): Observable<any> {
-    return this.http.get<any>(uriConfig.API_TEST).pipe(
+  getLatestApi(): Observable<any> {
+    return this.http.get<any>(uriConfig.API_LATEST).pipe(
+      map(res => ({
+        data: res.data
+      }))
+    )
+  }
+
+  getHistory24hApi(): Observable<any> {
+    return this.http.get<any>(uriConfig.API_HISTORY).pipe(
       map(res => ({
         data: res.data
       }))
