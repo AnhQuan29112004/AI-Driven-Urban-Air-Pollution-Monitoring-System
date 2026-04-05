@@ -6,16 +6,16 @@ from django.test import TestCase
 from unittest.mock import patch
 import pandas as pd
 
-from realtime.tasks.air_quality_tasks import ingest_air_quality_data
-from utils.utils import calculate_aqi
-from utils.bias_checker import RealtimeBiasChecker
+from air_pollution_be.realtime.tasks.air_quality_task import ingest_air_quality_data
+from utils.utils import Utils
+from utils.bias_check import RealtimeBiasChecker
 
 
 class RealtimeTests(TestCase):
 
     def test_calculate_aqi(self):
         """Test 1: Hàm tính AQI"""
-        result = calculate_aqi(pm25=45, pm10=80, no2=35)
+        result = Utils.calculate_aqi(pm25=45, pm10=80, no2=35)
         self.assertGreater(result["aqi"], 0)
         self.assertLessEqual(result["aqi"], 500)
         self.assertIn(result["category"], ["Tốt", "Trung bình", "Kém", "Xấu", "Rất xấu"])
@@ -30,7 +30,7 @@ class RealtimeTests(TestCase):
         self.assertIn("pm25", bias)
         self.assertIsInstance(bias["pm25"], float)
 
-    @patch('air_quality.models.AirData.objects.create')
+    @patch('air_quality_be.models.AirData.objects.create')
     @patch('channels.layers.get_channel_layer')
     def test_ingest_task(self, mock_channel, mock_create):
         """Test 3: Celery task ingest dữ liệu thành công"""
