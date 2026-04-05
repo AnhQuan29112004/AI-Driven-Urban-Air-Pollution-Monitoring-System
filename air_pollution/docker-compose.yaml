@@ -143,7 +143,6 @@ services:
       - air-pollution-network
     environment:
       - PYTHONUNBUFFERED=1
-      - START_MQTT_LISTENER=1
     restart: always
     env_file:
     - .env
@@ -168,7 +167,6 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL_DEV}
       # KAFKA_BROKER: kafka_air_pollution:9092
       PYTHONUNBUFFERED: 1
-      START_MQTT_LISTENER: "0"
     depends_on:
       - redis_air_pollution
       - be-air-pollution
@@ -195,7 +193,6 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL_DEV}
       # KAFKA_BROKER: kafka_air_pollution:9092
       PYTHONUNBUFFERED: 1
-      START_MQTT_LISTENER: "0"
     depends_on:
       - redis_air_pollution
       - be-air-pollution
@@ -243,6 +240,39 @@ services:
     restart: unless-stopped
     networks:
       - air-pollution-network
+
+  mqtt_consumer_air_pollution:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mqtt_consumer_air_pollution
+    volumes:
+      - .:/app
+    entrypoint: ["python", "manage.py", "run_mqtt_consumer"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis_air_pollution:
+        condition: service_healthy
+      mysql-air-pollution-db:
+        condition: service_healthy
+      be-air-pollution:
+        condition: service_started
+      mosquitto:
+        condition: service_started
+    restart: always
+    env_file:
+    - .env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - air-pollution-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   mysql-data:
