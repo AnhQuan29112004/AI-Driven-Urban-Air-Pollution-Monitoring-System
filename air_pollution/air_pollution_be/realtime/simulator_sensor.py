@@ -13,15 +13,15 @@ LAT, LON = 21.0285, 105.8542
 API_KEY = os.getenv('OPENWEATHERMAP_API_KEY')
 # Load dữ liệu đã engineered từ notebook 02
 df = pd.read_parquet('../../data/processed/hanoi_cleaned.parquet')
-df = df.head(50) 
+df = df.head(10) 
 # Historical means từ parquet (dùng cho bias check)
 historical_means = {
-    'pm25': float(df['pm25'].mean()),
-    'pm10': float(df['pm10'].mean()),
-    'no2': float(df.get('no2', pd.Series([25])).mean()),
-    'o3': float(df.get('o3', pd.Series([28])).mean()),
-    'so2': float(df.get('so2', pd.Series([12])).mean()),
-    'co': float(df.get('co', pd.Series([9])).mean()),
+    'pm25': round(float(df['pm25'].mean()),1),
+    'pm10': round(float(df['pm10'].mean()),1),
+    'no2': round(float(df.get('no2', pd.Series([25])).mean()),1),
+    'o3': round(float(df.get('o3', pd.Series([28])).mean()),1),
+    'so2': round(float(df.get('so2', pd.Series([12])).mean()),1),
+    'co': round(float(df.get('co', pd.Series([9])).mean()),1),
 }
 
 print("Historical means:", {k: round(v, 2) for k, v in historical_means.items()})
@@ -47,12 +47,12 @@ def get_weather():
 weather = get_weather()
 
 for i, row in df.iterrows():
-    co = float(row.get('co', 0))
-    no2 = float(row.get('no2', 0))
-    pm25 = float(row.get('pm25', 0))
-    pm10 = float(row.get('pm10', 0))
-    o3 = float(row.get('o3', 0))
-    so2 = float(row.get('so2', 0))
+    co = round(float(row.get('co', 0)),1)
+    no2 = round(float(row.get('no2', 0)),1)
+    pm25 = round(float(row.get('pm25', 0)),1)
+    pm10 = round(float(row.get('pm10', 0)),1)
+    o3 = round(float(row.get('o3', 0)),1)
+    so2 = round(float(row.get('so2', 0)),1)
 
     aqi = max(co, no2, pm25, pm10, o3, so2)
     payload = {
