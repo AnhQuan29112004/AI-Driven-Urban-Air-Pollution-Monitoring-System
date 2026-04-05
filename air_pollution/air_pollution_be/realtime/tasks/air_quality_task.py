@@ -4,6 +4,7 @@ from django.utils import timezone
 from utils.utils import Utils
 from utils.bias_check import RealtimeBiasChecker
 from air_pollution_be.models.air import AirData
+from air_pollution_be.realtime.validation.ge_realtime import validation_realtime
 import mlflow
 from dotenv import load_dotenv
 import os
@@ -57,7 +58,7 @@ def ingest_air_quality_data(self, payload: dict):
             for k, v in bias.items():
                 mlflow.log_metric(f"bias_{k}", v)     
         logger.info(f"Saved to DB - AQI: {aqi_value:.1f} | Category: {aqi_category}")
-        if not validate_realtime_payload(payload):
+        if not validation_realtime(payload):
             logger.warning("⚠️ Invalid payload received, skipping")
             return {"status": "skipped", "reason": "invalid_data"}
         return {
@@ -69,14 +70,3 @@ def ingest_air_quality_data(self, payload: dict):
     except Exception as e:
         logger.error(f"Error in ingest task: {e}")
 
-
-def validate_realtime_payload(payload: dict) -> bool:
-    """Validation nhẹ cho realtime data"""
-    required = ['pm25', 'pm10', 'city']
-    for field in required:
-        if field not in payload or payload[field] is None:
-            return False
-    if payload.get('pm25', 0) < 0 or payload.get('pm10', 0) < 0:
-        return False
-    return True
-        

@@ -231,5 +231,19 @@ class Utils:
             return "Very Unhealthy"
         else:
             return "Hazardous"
-    
+    @staticmethod
+    def validate_dataframe(df, suite_name, batch_definition, context):
+
+        batch = batch_definition.get_batch(
+            batch_parameters={"dataframe": df}
+        )
+
+        validator = context.get_validator(
+            batch=batch,
+            expectation_suite=suite_name
+        )
+
+        results = validator.validate()
+
+        return results.success
     
