@@ -1,7 +1,6 @@
 from django.test import TestCase
 
 # Create your tests here.
-import pytest
 from django.test import TestCase
 from unittest.mock import patch
 import pandas as pd
@@ -10,15 +9,13 @@ from air_pollution_be.realtime.tasks.air_quality_task import ingest_air_quality_
 from utils.utils import Utils
 from utils.bias_check import RealtimeBiasChecker
 
-
 class RealtimeTests(TestCase):
 
     def test_calculate_aqi(self):
         """Test 1: Hàm tính AQI"""
-        result = Utils.calculate_aqi(pm25=45, pm10=80, no2=35)
-        self.assertGreater(result["aqi"], 0)
-        self.assertLessEqual(result["aqi"], 500)
-        self.assertIn(result["category"], ["Tốt", "Trung bình", "Kém", "Xấu", "Rất xấu"])
+        result = Utils.calculate_aqi({"pm25": 45, "pm10": 80, "no2": 35})
+        self.assertGreater(result, 0)
+        self.assertLessEqual(result, 500)
 
     def test_bias_checker(self):
         """Test 2: Bias checker hoạt động đúng"""
@@ -30,9 +27,9 @@ class RealtimeTests(TestCase):
         self.assertIn("pm25", bias)
         self.assertIsInstance(bias["pm25"], float)
 
-    @patch('air_quality_be.models.AirData.objects.create')
+    @patch('air_pollution_be.models.AirData.save')
     @patch('channels.layers.get_channel_layer')
-    def test_ingest_task(self, mock_channel, mock_create):
+    def test_ingest_task(self, mock_channel, mock_save):
         """Test 3: Celery task ingest dữ liệu thành công"""
         payload = {
             "timestamp": "2026-02-06T14:00:00",
@@ -48,8 +45,9 @@ class RealtimeTests(TestCase):
             "noise_factor": 1.8
         }
         
-        result = ingest_air_quality_data.delay(payload).get(timeout=15)
+        # Test function call directly rather than through celery delay because CELERY_IGNORE_RESULT is used.
+        result = ingest_air_quality_data(payload)
         
         self.assertEqual(result["status"], "success")
         self.assertIn("aqi", result)
-        mock_create.assert_called_once()
+        mock_save.assert_called_once()
