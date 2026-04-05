@@ -14,8 +14,12 @@ import json
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://mlflow:5000'))
-mlflow.set_experiment("AirQuality_Hanoi_Realtime")
+
+try:
+    mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://mlflow:5000'))
+    mlflow.set_experiment("AirQuality_Hanoi_Realtime")
+except Exception as e:
+    logger.warning(f"MLflow initialization failed (this is expected during tests): {e}")
 
 @shared_task(bind=True, max_retries=3)
 def ingest_air_quality_data(self, payload: dict):
@@ -69,12 +73,15 @@ def ingest_air_quality_data(self, payload: dict):
         logger.info(f"Saved to DB - AQI: {aqi_value:.1f} | Category: {aqi_category}")
         
         # 3. MLflow logging
-        with mlflow.start_run(run_name="realtime_hanoi"):
-            mlflow.log_param("city", "Hanoi")
-            mlflow.log_metric("aqi", aqi_value)
-            mlflow.log_metric("pm25", payload.get('pm25', 0))
-            for k, v in bias.items():
-                mlflow.log_metric(f"bias_{k}", v)
+        try:
+            with mlflow.start_run(run_name="realtime_hanoi"):
+                mlflow.log_param("city", "Hanoi")
+                mlflow.log_metric("aqi", aqi_value)
+                mlflow.log_metric("pm25", payload.get('pm25', 0))
+                for k, v in bias.items():
+                    mlflow.log_metric(f"bias_{k}", v)
+        except Exception as e:
+            logger.warning(f"Could not log to MLflow: {e}")
                 
         # 4. Broadcast event via Django Channels (WebSocket)
         channel_layer = get_channel_layer()
