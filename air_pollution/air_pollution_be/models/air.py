@@ -11,7 +11,6 @@ class AirData(models.Model):
     co = models.FloatField(null=True, blank=True)
     o3 = models.FloatField(null=True, blank=True)
     so2 = models.FloatField(null=True, blank=True)
-    no2 = models.FloatField(null=True, blank =True)
     aqi = models.IntegerField(null=True, blank=True)
     aqi_category = models.CharField(max_length=20, null=True, blank=True)
     temperature = models.FloatField(null=True, blank=True)
