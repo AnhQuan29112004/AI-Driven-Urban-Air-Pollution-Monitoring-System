@@ -1,9 +1,7 @@
-from django.db.models import Q
 from rest_framework import serializers
+from air_pollution_be.models.air import AirData
 
-from constants.constants import Constants
-from validators.validator import Validator
-
-class DashboardSerializer(serializers.Serializer):
-    test = serializers.CharField(max_length=20)
-    
+class DashboardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AirData
+        fields = '__all__'
