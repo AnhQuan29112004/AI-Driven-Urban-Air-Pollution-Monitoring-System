@@ -2,7 +2,7 @@
 import pandas as pd
 import logging
 from pathlib import Path
-import settings
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
