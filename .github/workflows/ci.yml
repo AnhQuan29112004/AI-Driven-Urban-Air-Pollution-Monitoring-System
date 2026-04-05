@@ -48,4 +48,4 @@ jobs:
         DB_PASSWORD: password
         DEV_DB_HOST: 127.0.0.1
       run: |
-        python manage.py test air_pollution_be
+        python manage.py test air_pollution_be.tests
