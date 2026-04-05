@@ -21,5 +21,6 @@ urlpatterns = [
     path("delete/user/<int:id>/", delete_user),
     path('upload-image/', upload_image),
     path('change-password/', change_password),
-    path('test-api/', test_api)
+    path('dashboard/latest/', get_latest),
+    path('dashboard/history/', get_history)
 ]

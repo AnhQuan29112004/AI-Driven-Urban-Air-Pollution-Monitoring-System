@@ -11,9 +11,12 @@ from rest_framework.permissions import AllowAny,IsAuthenticated, IsAdminUser
 
 @permission_classes([AllowAny])
 @api_view(["GET"])
-def test_api(request):
-    data = DashboardService.test_api()
-    return AppResponse.success(
-        SuccessCodes.DEFAULT,
-        data=data,
-    )
+def get_latest(request):
+    data = DashboardService.get_latest_data()
+    return AppResponse.success(SuccessCodes.DEFAULT, data=data)
+
+@permission_classes([AllowAny])
+@api_view(["GET"])
+def get_history(request):
+    data = DashboardService.get_history_24h()
+    return AppResponse.success(SuccessCodes.DEFAULT, data=data)
