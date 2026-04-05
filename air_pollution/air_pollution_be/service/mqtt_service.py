@@ -20,14 +20,14 @@ class MQTTServiceClass:
     def start_listening():
         with MQTTServiceClass._lock:
             if MQTTServiceClass._listener_started:
-                return
+                return None
             MQTTServiceClass._listener_started = True
         mqtt_consumer = MQTTConsumer()
-        
-        
         try:
             mqtt_consumer.connect()
             logger.info("🌟 Trạng thái: MQTT Listener Worker sẵn sàng ở background!")
+            return mqtt_consumer
         except Exception as e:
             logger.error(f"Không thể kết nối vào MQTT Broker: {e}")
             MQTTServiceClass._listener_started = False
+            raise
