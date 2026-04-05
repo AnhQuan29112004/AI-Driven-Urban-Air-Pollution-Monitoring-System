@@ -10,3 +10,10 @@ anaconda_projects
 **/__pycache__/
 **/*.pyc
 .vscode/
+
+# Ignore local sqlite DBs / MLFlow DBs
+*.sqlite3
+*.db
+mlflow.db
+mlflow/
+.dvc/
