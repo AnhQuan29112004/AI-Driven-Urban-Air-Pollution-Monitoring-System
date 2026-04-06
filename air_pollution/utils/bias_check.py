@@ -7,10 +7,13 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 class RealtimeBiasChecker:
-    def __init__(self, parquet_path: str = f"{settings.BASE_DIR}/data/processed/hanoi_cleaned.parquet"):
+    def __init__(self,historical_means: dict = None, parquet_path: str = f"{settings.BASE_DIR}/data/processed/hanoi_cleaned.parquet"):
         self.parquet_path = parquet_path
         self.historical_means = {}
-        self._load_historical_means()
+        if historical_means:
+            self.historical_means = historical_means
+        else:
+            self.historical_means = self._load_historical_means()
 
     def _load_historical_means(self):
         try:

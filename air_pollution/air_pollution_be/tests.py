@@ -15,7 +15,11 @@ class RealtimeTests(SimpleTestCase):
 
     def test_bias_checker(self):
         """Test 2: Bias checker hoạt động đúng"""
-        checker = RealtimeBiasChecker()
+        checker = RealtimeBiasChecker(historical_means= {
+            "pm25": 50,
+            "pm10": 40,
+            "no2": 20
+        })
         payload = {"pm25": 95, "pm10": 70, "no2": 40}
         bias = checker.check_bias(payload)
         
@@ -23,7 +27,7 @@ class RealtimeTests(SimpleTestCase):
         self.assertIn("pm25", bias)
         self.assertIsInstance(bias["pm25"], float)
 
-    @patch('air_pollution_be.models.AirData.save')
+    @patch('air_pollution_be.models.air.AirData.save')
     @patch('channels.layers.get_channel_layer')
     def test_ingest_task(self, mock_channel, mock_save):
         """Test 3: Celery task ingest dữ liệu thành công"""
