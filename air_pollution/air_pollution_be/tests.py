@@ -1,15 +1,11 @@
-from django.test import TestCase
-
-# Create your tests here.
-from django.test import TestCase
+from django.test import SimpleTestCase
 from unittest.mock import patch
-import pandas as pd
 
 from air_pollution_be.realtime.tasks.air_quality_task import ingest_air_quality_data
 from utils.utils import Utils
 from utils.bias_check import RealtimeBiasChecker
 
-class RealtimeTests(TestCase):
+class RealtimeTests(SimpleTestCase):
 
     def test_calculate_aqi(self):
         """Test 1: Hàm tính AQI"""
