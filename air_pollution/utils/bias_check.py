@@ -13,7 +13,7 @@ class RealtimeBiasChecker:
         if historical_means:
             self.historical_means = historical_means
         else:
-            self.historical_means = self._load_historical_means()
+            self._load_historical_means()
 
     def _load_historical_means(self):
         try:
