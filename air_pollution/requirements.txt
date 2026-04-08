@@ -81,6 +81,10 @@ great_expectations[cli]
 evidently
 prefect
 dvc
+optuna==4.0.0
+pmdarima==2.1.0
+workalendar==17.0.0
+
 
 # =========================
 # Dev / Testing / CI
