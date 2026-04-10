@@ -6,4 +6,4 @@ class UserConfig(AppConfig):
     name = 'air_pollution_be'
 
     def ready(self):
-        import air_pollution_be.signal
+        import air_pollution_be.signals
