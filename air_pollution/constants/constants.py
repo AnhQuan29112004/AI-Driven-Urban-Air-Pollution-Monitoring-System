@@ -52,3 +52,7 @@ class Constants:
         (0.086, 0.105, 151, 200),
         (0.106, 0.200, 201, 300)
     ]
+    SUPPORTED_SOURCES = {"parquet_uci", "parquet_hanoi", "db", "merged"}
+    LAG_WINDOWS = (1, 3, 6, 12, 24)
+    ROLLING_WINDOWS = (3, 6, 12, 24)
+    ROLLING_STATS = ("mean", "std", "min", "max")   
