@@ -3,7 +3,7 @@ import logging
 import holidays
 import pandas as pd
 
-from .validate import validate_feature_matrix
+from validate import validate_feature_matrix
 from constants.constants import Constants
 from constants.alias import Alias
 

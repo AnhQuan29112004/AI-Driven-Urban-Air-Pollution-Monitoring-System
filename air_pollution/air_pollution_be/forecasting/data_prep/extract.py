@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any
 from django.conf import settings
 from air_pollution_be.models.air import AirData 
-from .validate import validate_data_quality
-from .transform import clean_and_resample_data
+from validate import validate_data_quality
+from transform import clean_and_resample_data
 from sklearn.model_selection import TimeSeriesSplit
 from constants.constants import Constants
 from constants.alias import Alias
