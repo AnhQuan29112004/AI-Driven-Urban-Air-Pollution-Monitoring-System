@@ -171,6 +171,7 @@ def train_xgboost_optuna(
     y_test: pd.Series,
     n_trials: int = 50,
     random_state: int = 42,
+    target_name: str = "target"
 ) -> dict:
     import optuna
 
@@ -186,7 +187,7 @@ def train_xgboost_optuna(
     study = optuna.create_study(
         direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=random_state),
-        study_name="xgboost_pm25_tuning"
+        study_name=f"xgboost_{target_name}_tuning"
     )
     study.optimize(
         lambda trial: _optuna_objective(trial, X_fit, y_fit, X_val, y_val),
@@ -232,16 +233,17 @@ def train_xgboost_optuna(
 
 def train_xgboost_classifier(
     X_train: pd.DataFrame,
-    y_train_pm25: pd.Series,
+    y_train_target: pd.Series,
     X_test: pd.DataFrame,
-    y_test_pm25: pd.Series,
+    y_test_target: pd.Series,
     n_estimators: int = 300,
     max_depth: int = 5,
     learning_rate: float = 0.05,
-    random_state: int = 42
+    random_state: int = 42,
+    target_name: str = "target"
 ) -> dict:
-    y_train_labels = y_train_pm25.apply(pm25_to_level_index)
-    y_test_labels = y_test_pm25.apply(pm25_to_level_index)
+    y_train_labels = y_train_target.apply(pm25_to_level_index)
+    y_test_labels = y_test_target.apply(pm25_to_level_index)
 
     # Determine number of classes present
     n_classes = max(y_train_labels.max(), y_test_labels.max()) + 1
@@ -275,8 +277,8 @@ def train_xgboost_classifier(
     )
 
     logger.info(
-        "XGBoost Classifier trained | accuracy=%.4f classes=%d",
-        accuracy, n_classes
+        "XGBoost Classifier trained | target=%s accuracy=%.4f classes=%d",
+        target_name, accuracy, n_classes
     )
 
     residual_regressor = xgb.XGBRegressor(
@@ -287,11 +289,11 @@ def train_xgboost_classifier(
         random_state=random_state,
         verbosity=0
     )
-    residual_regressor.fit(X_fit, y_train_pm25.iloc[:len(X_fit)])
+    residual_regressor.fit(X_fit, y_train_target.iloc[:len(X_fit)])
     train_regression_pred = residual_regressor.predict(X_train)
     test_regression_pred = residual_regressor.predict(X_test)
-    train_residual_scores = np.abs(y_train_pm25.to_numpy() - train_regression_pred)
-    test_residual_scores = np.abs(y_test_pm25.to_numpy() - test_regression_pred)
+    train_residual_scores = np.abs(y_train_target.to_numpy() - train_regression_pred)
+    test_residual_scores = np.abs(y_test_target.to_numpy() - test_regression_pred)
     anomaly_threshold = float(np.quantile(train_residual_scores, 0.95))
     anomaly_flags = test_residual_scores >= anomaly_threshold
 
@@ -299,11 +301,12 @@ def train_xgboost_classifier(
         "model": "XGBoost Classifier",
         "xgb_model": model,
         "y_pred": y_pred,
-        "y_pred_labels": pd.Series(y_pred, index=y_test_pm25.index),
+        "target_name": target_name,
+        "y_pred_labels": pd.Series(y_pred, index=y_test_target.index),
         "accuracy": round(accuracy, 4),
         "classification_report": report,
-        "anomaly_scores": pd.Series(test_residual_scores, index=y_test_pm25.index),
+        "anomaly_scores": pd.Series(test_residual_scores, index=y_test_target.index),
         "anomaly_threshold": round(anomaly_threshold, 4),
-        "anomaly_flags": pd.Series(anomaly_flags, index=y_test_pm25.index),
+        "anomaly_flags": pd.Series(anomaly_flags, index=y_test_target.index),
         "anomaly_rate": round(float(np.mean(anomaly_flags) * 100.0), 2)
     }
