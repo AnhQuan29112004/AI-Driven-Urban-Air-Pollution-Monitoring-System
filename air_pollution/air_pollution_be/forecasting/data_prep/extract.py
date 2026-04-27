@@ -18,6 +18,7 @@ PARQUET_PATHS = {
 }
 SUPPORTED_SOURCES = Constants.SUPPORTED_SOURCES
 WEATHER_COLUMNS = Alias.WEATHER_COLUMNS
+POLLUTANT_COLUMNS = Alias.POLLUTANT_COLUMNS
 UCI_COLUMN_ALIASES = Alias.UCI_COLUMN_ALIASES
 
 def _rename_with_alias_map(df: pd.DataFrame, alias_map: dict[str, tuple[str, ...]]) -> pd.DataFrame:
@@ -44,6 +45,7 @@ def _load_from_db(
     start_date: Any = None,
     end_date: Any = None,
     location: str | None = None,
+    include_pollutant_covariates: bool = True
 ) -> pd.DataFrame:
     queryset = AirData.objects.all()
     if start_date:
@@ -53,7 +55,11 @@ def _load_from_db(
     if location:
         queryset = queryset.filter(location=location)
 
-    selected_columns = ["timestamp", pollutant, *WEATHER_COLUMNS]
+    pollutant_covariates = [
+        column for column in POLLUTANT_COLUMNS
+        if include_pollutant_covariates and column != pollutant
+    ]
+    selected_columns = ["timestamp", pollutant, *pollutant_covariates, *WEATHER_COLUMNS]
     existing_columns = [column.name for column in AirData._meta.fields]
     selected_columns = [column for column in selected_columns if column in existing_columns]
 
@@ -70,8 +76,12 @@ def _align_uci_schema(df: pd.DataFrame) -> pd.DataFrame:
     return _rename_with_alias_map(aligned, UCI_COLUMN_ALIASES)
 
 
-def _select_relevant_columns(df: pd.DataFrame, pollutant: str) -> pd.DataFrame:
-    selected_columns = [pollutant, *WEATHER_COLUMNS]
+def _select_relevant_columns(df: pd.DataFrame, pollutant: str, include_pollutant_covariates: bool = True) -> pd.DataFrame:
+    pollutant_covariates = [
+        column for column in POLLUTANT_COLUMNS
+        if include_pollutant_covariates and column != pollutant
+    ]
+    selected_columns = [pollutant, *pollutant_covariates, *WEATHER_COLUMNS]
     existing_columns = [column for column in selected_columns if column in df.columns]
     if pollutant not in existing_columns:
         raise ValueError(
@@ -86,9 +96,14 @@ def _prepare_single_source_frame(
     pollutant: str,
     source: str,
     clip_outliers: bool = False,
+    include_pollutant_covariates: bool = True
 ) -> pd.DataFrame:
     aligned_df = _align_uci_schema(raw_df) if source == "parquet_uci" else raw_df.copy()
-    selected_df = _select_relevant_columns(aligned_df, pollutant)
+    selected_df = _select_relevant_columns(
+        aligned_df,
+        pollutant,
+        include_pollutant_covariates=include_pollutant_covariates,
+    )
     return clean_and_resample_data(
         selected_df,
         target_col=pollutant,
@@ -100,13 +115,15 @@ def _prepare_single_source_frame(
 def merge_training_sources(
     pollutant: str = "pm25",
     clip_outliers: bool = False,
+    include_pollutant_covariates: bool = True,
 ) -> pd.DataFrame:
-    uci_df = _prepare_single_source_frame(_load_parquet("parquet_uci"), pollutant, "parquet_uci", clip_outliers)
+    uci_df = _prepare_single_source_frame(_load_parquet("parquet_uci"), pollutant, "parquet_uci", clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
     hanoi_df = _prepare_single_source_frame(
         _load_parquet("parquet_hanoi"),
         pollutant,
         "parquet_hanoi",
         clip_outliers,
+        include_pollutant_covariates=include_pollutant_covariates
     )
     merged_df = pd.concat([uci_df, hanoi_df], axis=0).sort_index()
     return merged_df[~merged_df.index.duplicated(keep="last")]
@@ -120,6 +137,7 @@ def load_data(
     location: str | None = None,
     return_report: bool = False,
     clip_outliers: bool = False,
+    include_pollutant_covariates: bool = True
 ) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, Any]]:
     """
     Load and prepare forecasting data from parquet (research), DB/AirData (production), or merged sources.
@@ -130,13 +148,13 @@ def load_data(
     logger.info("Loading forecasting data | source=%s pollutant=%s location=%s", source, pollutant, location)
 
     if source == "db":
-        raw_df = _load_from_db(pollutant=pollutant, start_date=start_date, end_date=end_date, location=location)
-        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, clip_outliers)
+        raw_df = _load_from_db(pollutant=pollutant, start_date=start_date, end_date=end_date, location=location, include_pollutant_covariates=include_pollutant_covariates)
+        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
     elif source == "merged":
-        prepared_df = merge_training_sources(pollutant=pollutant, clip_outliers=clip_outliers)
+        prepared_df = merge_training_sources(pollutant=pollutant, clip_outliers=clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
     else:
         raw_df = _load_parquet(source)
-        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, clip_outliers)
+        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
 
     report = validate_data_quality(prepared_df, target_col=pollutant)
     logger.info("Prepared forecasting frame | rows=%s cols=%s", len(prepared_df), prepared_df.shape[1])
