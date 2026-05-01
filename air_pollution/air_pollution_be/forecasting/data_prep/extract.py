@@ -21,6 +21,20 @@ WEATHER_COLUMNS = Alias.WEATHER_COLUMNS
 POLLUTANT_COLUMNS = Alias.POLLUTANT_COLUMNS
 UCI_COLUMN_ALIASES = Alias.UCI_COLUMN_ALIASES
 
+HOURLY_FREQUENCIES = {"h", "hour", "hourly"}
+DAILY_FREQUENCIES = {"d", "day", "daily"}
+
+
+def _normalize_frequency(frequency: str | None, source: str | None = None) -> str:
+    if frequency is None:
+        return "D" if source == "parquet_hanoi" else "h"
+    normalized = str(frequency).strip().lower()
+    if normalized in HOURLY_FREQUENCIES:
+        return "h"
+    if normalized in DAILY_FREQUENCIES:
+        return "D"
+    return frequency
+
 def _rename_with_alias_map(df: pd.DataFrame, alias_map: dict[str, tuple[str, ...]]) -> pd.DataFrame:
     renamed_columns: dict[str, str] = {}
     existing_lookup = {str(column).strip().lower(): column for column in df.columns}
@@ -95,9 +109,11 @@ def _prepare_single_source_frame(
     raw_df: pd.DataFrame,
     pollutant: str,
     source: str,
+    frequency: str | None = None,
     clip_outliers: bool = False,
     include_pollutant_covariates: bool = True
 ) -> pd.DataFrame:
+    resolved_frequency = _normalize_frequency(frequency, source)
     aligned_df = _align_uci_schema(raw_df) if source == "parquet_uci" else raw_df.copy()
     selected_df = _select_relevant_columns(
         aligned_df,
@@ -107,6 +123,7 @@ def _prepare_single_source_frame(
     return clean_and_resample_data(
         selected_df,
         target_col=pollutant,
+        frequency=resolved_frequency,
         keep_columns=selected_df.columns.tolist(),
         clip_outliers=clip_outliers,
     )
@@ -114,18 +131,39 @@ def _prepare_single_source_frame(
 
 def merge_training_sources(
     pollutant: str = "pm25",
+    frequency: str | None = None,
     clip_outliers: bool = False,
     include_pollutant_covariates: bool = True,
 ) -> pd.DataFrame:
-    uci_df = _prepare_single_source_frame(_load_parquet("parquet_uci"), pollutant, "parquet_uci", clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
-    hanoi_df = _prepare_single_source_frame(
-        _load_parquet("parquet_hanoi"),
-        pollutant,
-        "parquet_hanoi",
-        clip_outliers,
-        include_pollutant_covariates=include_pollutant_covariates
-    )
-    merged_df = pd.concat([uci_df, hanoi_df], axis=0).sort_index()
+    resolved_frequency = _normalize_frequency(frequency, "merged")
+    frames = [
+        _prepare_single_source_frame(
+            _load_parquet("parquet_uci"),
+            pollutant,
+            "parquet_uci",
+            resolved_frequency,
+            clip_outliers,
+            include_pollutant_covariates=include_pollutant_covariates,
+        )
+    ]
+    if resolved_frequency == "D":
+        frames.append(
+            _prepare_single_source_frame(
+                _load_parquet("parquet_hanoi"),
+                pollutant,
+                "parquet_hanoi",
+                resolved_frequency,
+                clip_outliers,
+                include_pollutant_covariates=include_pollutant_covariates,
+            )
+        )
+    else:
+        logger.warning(
+            "Skipping parquet_hanoi in hourly merged source because it is daily data; "
+            "use frequency='D' to build a daily merged training frame."
+        )
+
+    merged_df = pd.concat(frames, axis=0).sort_index()
     return merged_df[~merged_df.index.duplicated(keep="last")]
 
 
@@ -137,6 +175,7 @@ def load_data(
     location: str | None = None,
     return_report: bool = False,
     clip_outliers: bool = False,
+    frequency: str = None,
     include_pollutant_covariates: bool = True
 ) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, Any]]:
     """
@@ -145,18 +184,23 @@ def load_data(
     if source not in SUPPORTED_SOURCES:
         raise ValueError(f"source must be one of {sorted(SUPPORTED_SOURCES)}")
 
-    logger.info("Loading forecasting data | source=%s pollutant=%s location=%s", source, pollutant, location)
+    resolved_frequency = _normalize_frequency(frequency, source)
+
+    logger.info(
+        "Loading forecasting data | source=%s pollutant=%s frequency=%s location=%s",
+        source, pollutant, resolved_frequency, location
+    )
 
     if source == "db":
         raw_df = _load_from_db(pollutant=pollutant, start_date=start_date, end_date=end_date, location=location, include_pollutant_covariates=include_pollutant_covariates)
-        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
+        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, resolved_frequency, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
     elif source == "merged":
-        prepared_df = merge_training_sources(pollutant=pollutant, clip_outliers=clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
+        prepared_df = merge_training_sources(pollutant=pollutant, frequency=resolved_frequency, clip_outliers=clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
     else:
         raw_df = _load_parquet(source)
-        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
+        prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, resolved_frequency, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
 
-    report = validate_data_quality(prepared_df, target_col=pollutant)
+    report = validate_data_quality(prepared_df, target_col=pollutant, frequency=resolved_frequency)
     logger.info("Prepared forecasting frame | rows=%s cols=%s", len(prepared_df), prepared_df.shape[1])
 
     if return_report:
