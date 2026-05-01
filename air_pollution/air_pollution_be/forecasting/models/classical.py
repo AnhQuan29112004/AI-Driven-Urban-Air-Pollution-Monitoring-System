@@ -8,6 +8,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
+from utils.utils import Utils
 
 logger = logging.getLogger(__name__)
 
@@ -139,4 +140,105 @@ def train_auto_arima(
         "selected_model_label": model_label,
         "order": order,
         "seasonal_order": seasonal_order
+    }
+
+
+# ---------------------------------------------------------------------------
+# Public API - ETS / Exponential Smoothing (raw series, no feature matrix)
+# ---------------------------------------------------------------------------
+
+def _ets_candidates(train_series: pd.Series, seasonal_periods: int) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = [
+        {"trend": None, "damped_trend": False, "seasonal": None},
+        {"trend": "add", "damped_trend": False, "seasonal": None},
+        {"trend": "add", "damped_trend": True, "seasonal": None}
+    ]
+
+    # statsmodels needs at least two full seasonal cycles for initialization.
+    if seasonal_periods > 1 and len(train_series) >= seasonal_periods * 2:
+        seasonal_candidates = [
+            {"trend": None, "damped_trend": False, "seasonal": "add"},
+            {"trend": "add", "damped_trend": False, "seasonal": "add"},
+            {"trend": "add", "damped_trend": True, "seasonal": "add"}
+        ]
+        if (train_series > 0).all():
+            seasonal_candidates.extend([
+                {"trend": None, "damped_trend": False, "seasonal": "mul"},
+                {"trend": "add", "damped_trend": False, "seasonal": "mul"},
+                {"trend": "add", "damped_trend": True, "seasonal": "mul"}
+            ])
+        candidates.extend(seasonal_candidates)
+
+    return candidates
+
+
+def train_ets(train_series: pd.Series, test_series: pd.Series, seasonal_periods: int = 24, initialization_method: str = "estimated", optimized: bool = True) -> dict:
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+    y_train = Utils.prepare_univariate_series(train_series)
+    y_test = Utils.prepare_univariate_series(test_series)
+
+    logger.info(
+        "Fitting ETS candidates | train_rows=%d forecast_horizon=%d m=%d",
+        len(y_train), len(y_test), seasonal_periods
+    )
+
+    best_fit = None
+    best_config: dict[str, Any] | None = None
+    best_aic = float("inf")
+    failures: list[str] = []
+
+    for config in _ets_candidates(y_train, seasonal_periods):
+        use_seasonal_periods = seasonal_periods if config["seasonal"] else None
+        try:
+            ets_model = ExponentialSmoothing(
+                y_train,
+                trend=config["trend"],
+                damped_trend=config["damped_trend"],
+                seasonal=config["seasonal"],
+                seasonal_periods=use_seasonal_periods,
+                initialization_method=initialization_method,
+            )
+            fit = ets_model.fit(optimized=optimized)
+            aic = float(getattr(fit, "aic", np.inf))
+            if np.isfinite(aic) and aic < best_aic:
+                best_fit = fit
+                best_config = config
+                best_aic = aic
+        except Exception as exc:
+            failures.append(f"{config}: {exc}")
+            logger.debug("ETS candidate failed | config=%s error=%s", config, exc)
+
+    if best_fit is None or best_config is None:
+        raise RuntimeError("All ETS candidates failed: " + " | ".join(failures))
+
+    y_pred_values = best_fit.forecast(len(y_test))
+    y_pred = pd.Series(y_pred_values, index=y_test.index, name="y_pred")
+
+    mae = mean_absolute_error(y_test, y_pred)
+    rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+
+    selected_label = (
+        "ETS("
+        f"trend={best_config['trend'] or 'none'}, "
+        f"damped={best_config['damped_trend']}, "
+        f"seasonal={best_config['seasonal'] or 'none'}, "
+        f"m={seasonal_periods if best_config['seasonal'] else 0}"
+        ")"
+    )
+
+    logger.info(
+        "ETS fitted | selected=%s aic=%.4f mae=%.4f rmse=%.4f",
+        selected_label, best_aic, mae, rmse,
+    )
+
+    return {
+        "model": "ETS",
+        "ets_model": best_fit,
+        "y_pred": y_pred,
+        "mae": round(mae, 4),
+        "rmse": round(rmse, 4),
+        "selected_model_label": selected_label,
+        "selected_config": best_config,
+        "aic": round(best_aic, 4),
     }
