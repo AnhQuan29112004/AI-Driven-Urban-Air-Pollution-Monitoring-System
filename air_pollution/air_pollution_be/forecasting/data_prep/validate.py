@@ -76,7 +76,19 @@ def run_stationarity_tests(series: pd.Series) -> dict[str, float | bool | str | 
     return report
 
 
-def validate_data_quality(df: pd.DataFrame, target_col: str = "pm25") -> dict[str, Any]:
+def _frequency_to_timedelta(frequency: str) -> pd.Timedelta | None:
+    normalized = str(frequency).strip().lower()
+    if normalized in {"h", "hour", "hourly"}:
+        return pd.Timedelta(hours=1)
+    if normalized in {"d", "day", "daily"}:
+        return pd.Timedelta(days=1)
+    try:
+        return pd.to_timedelta(pd.tseries.frequencies.to_offset(frequency))
+    except (TypeError, ValueError):
+        return None
+
+
+def validate_data_quality(df: pd.DataFrame, target_col: str = "pm25",frequency: str = "h") -> dict[str, Any]:
     if df.empty:
         raise ValueError("DataFrame is empty; cannot validate forecasting data.")
     if target_col not in df.columns:
@@ -86,8 +98,17 @@ def validate_data_quality(df: pd.DataFrame, target_col: str = "pm25") -> dict[st
 
     sorted_index = df.index.sort_values()
     duplicate_timestamps = int(df.index.duplicated().sum())
-    hourly_diff = sorted_index.to_series().diff().dropna()
-    is_hourly_regular = bool(hourly_diff.empty or (hourly_diff == pd.Timedelta(hours=1)).all())
+    observed_diff = sorted_index.to_series().diff().dropna()
+    expected_delta = _frequency_to_timedelta(frequency)
+    is_regular = bool(
+        observed_diff.empty
+        or expected_delta is None
+        or (observed_diff == expected_delta).all()
+    )
+    is_hourly_regular = bool(
+        observed_diff.empty
+        or (observed_diff == pd.Timedelta(hours=1)).all()
+    )
 
     target_series = pd.to_numeric(df[target_col], errors="coerce")
     outlier_mask = _compute_outlier_mask(target_series)
@@ -99,6 +120,8 @@ def validate_data_quality(df: pd.DataFrame, target_col: str = "pm25") -> dict[st
         "start_timestamp": df.index.min(),
         "end_timestamp": df.index.max(),
         "duplicate_timestamps": duplicate_timestamps,
+        "expected_frequency": frequency,
+        "is_regular": is_regular,
         "is_hourly_regular": is_hourly_regular,
         "missing_pct": df.isna().mean().mul(100).round(2).to_dict(),
         "outlier_count": int(outlier_mask.sum()),
@@ -107,14 +130,15 @@ def validate_data_quality(df: pd.DataFrame, target_col: str = "pm25") -> dict[st
     report.update(stationarity)
 
     logger.info(
-        "Validation report | rows=%s cols=%s missing_%s=%.2f%% duplicates=%s outliers=%s hourly_regular=%s",
+        "Validation report | rows=%s cols=%s missing_%s=%.2f%% duplicates=%s outliers=%s frequency=%s regular=%s",
         report["row_count"],
         report["column_count"],
         target_col,
         report["missing_pct"].get(target_col, 0.0),
         duplicate_timestamps,
         report["outlier_count"],
-        is_hourly_regular,
+        frequency,
+        is_regular
     )
     logger.info(
         "Stationarity report | status=%s adf_pvalue=%s kpss_pvalue=%s",
