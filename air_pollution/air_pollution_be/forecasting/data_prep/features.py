@@ -14,6 +14,15 @@ ROLLING_WINDOWS = Constants.ROLLING_WINDOWS
 ROLLING_STATS = Constants.ROLLING_STATS
 WEATHER_COLUMNS = Alias.WEATHER_COLUMNS
 POLLUTANT_COLUMNS = Alias.POLLUTANT_COLUMNS
+FEATURE_CONFIGS = Constants.FEATURE_CONFIGS
+
+def _normalize_frequency(frequency: str) -> str:
+    normalized = str(frequency).strip().lower()
+    if normalized in {"h", "hour", "hourly"}:
+        return "h"
+    if normalized in {"d", "day", "daily"}:
+        return "D"
+    raise ValueError("frequency must be hourly ('h') or daily ('D') for feature generation.")
 
 
 def add_holiday_flag(df: pd.DataFrame, country: str = "VN") -> pd.DataFrame:
@@ -58,35 +67,42 @@ def _add_lag_features(
     features: pd.DataFrame,
     source_df: pd.DataFrame,
     columns: list[str],
+    lag_windows: tuple[int, ...],
+    suffix: str,
 ) -> None:
     for column in columns:
         series = source_df[column]
-        for lag in LAG_WINDOWS:
-            features[f"{column}_lag_{lag}h"] = series.shift(lag)
+        for lag in lag_windows:
+            features[f"{column}_lag_{lag}{suffix}"] = series.shift(lag)
 
 
 def _add_rolling_features(
     features: pd.DataFrame,
     source_df: pd.DataFrame,
     columns: list[str],
+    rolling_windows: tuple[int, ...],
+    suffix: str,
 ) -> None:
     for column in columns:
         shifted = source_df[column].shift(1)
-        for window in ROLLING_WINDOWS:
+        for window in rolling_windows:
             rolled = shifted.rolling(window)
             if "mean" in ROLLING_STATS:
-                features[f"{column}_roll_mean_{window}h"] = rolled.mean()
+                features[f"{column}_roll_mean_{window}{suffix}"] = rolled.mean()
             if "std" in ROLLING_STATS:
-                features[f"{column}_roll_std_{window}h"] = rolled.std()
+                features[f"{column}_roll_std_{window}{suffix}"] = rolled.std()
             if "min" in ROLLING_STATS:
-                features[f"{column}_roll_min_{window}h"] = rolled.min()
+                features[f"{column}_roll_min_{window}{suffix}"] = rolled.min()
             if "max" in ROLLING_STATS:
-                features[f"{column}_roll_max_{window}h"] = rolled.max()
+                features[f"{column}_roll_max_{window}{suffix}"] = rolled.max()
 
 
 def build_tabular_features(
     df: pd.DataFrame,
     target_col: str = "pm25",
+    frequency: str = "h",
+    lag_windows: tuple[int, ...] | None = None,
+    rolling_windows: tuple[int, ...] | None = None,
     include_weather: bool = True,
     include_holidays: bool = True,
     dropna: bool = True,
@@ -104,12 +120,18 @@ def build_tabular_features(
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("Feature generation requires a DatetimeIndex.")
 
+    resolved_frequency = _normalize_frequency(frequency)
+    config = FEATURE_CONFIGS[resolved_frequency]
+    resolved_lags = tuple(lag_windows or config["lags"])
+    resolved_rolling_windows = tuple(rolling_windows or config["rolling_windows"])
+    suffix = str(config["suffix"])
+
     history_columns = _history_feature_columns(df, target_col=target_col, include_weather=include_weather)
     features = pd.DataFrame(index=df.index)
     features[target_col] = df[target_col]
 
-    _add_lag_features(features, df, history_columns)
-    _add_rolling_features(features, df, history_columns)
+    _add_lag_features(features, df, history_columns, resolved_lags, suffix)
+    _add_rolling_features(features, df, history_columns, resolved_rolling_windows, suffix)
 
     if include_weather:
         weather_columns = [column for column in WEATHER_COLUMNS if column in df.columns]
@@ -125,9 +147,10 @@ def build_tabular_features(
 
     validation_report = validate_feature_matrix(features, target_col=target_col, allow_target=True)
     logger.info(
-        "Feature matrix built | rows=%s cols=%s leakage_free=%s history_columns=%s",
+        "Feature matrix built | rows=%s cols=%s frequency=%s leakage_free=%s history_columns=%s",
         validation_report["row_count"],
         validation_report["feature_count"],
+        resolved_frequency,
         validation_report["leakage_free"],
         history_columns
     )
