@@ -56,3 +56,16 @@ class Constants:
     LAG_WINDOWS = (1, 3, 6, 12, 24)
     ROLLING_WINDOWS = (3, 6, 12, 24)
     ROLLING_STATS = ("mean", "std", "min", "max")   
+    
+    FEATURE_CONFIGS = {
+        "h": {
+            "lags": LAG_WINDOWS,
+            "rolling_windows": ROLLING_WINDOWS,
+            "suffix": "h",
+        },
+        "D": {
+            "lags": (1, 3, 7, 14, 30),
+            "rolling_windows": (7, 14, 30),
+            "suffix": "d",
+        },
+    }
