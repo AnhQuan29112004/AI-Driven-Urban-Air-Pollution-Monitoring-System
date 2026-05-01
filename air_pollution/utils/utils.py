@@ -247,3 +247,10 @@ class Utils:
 
         return results.success
     
+    @staticmethod
+    def prepare_univariate_series(series: pd.Series) -> pd.Series:
+        clean = pd.to_numeric(series, errors="coerce").dropna().sort_index()
+        if clean.empty:
+            raise ValueError("Series is empty after dropping missing values.")
+        return clean
+    
