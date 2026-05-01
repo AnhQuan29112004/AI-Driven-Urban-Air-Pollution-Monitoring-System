@@ -107,3 +107,20 @@ class ForecastingFeatureTests(SimpleTestCase):
         self.assertIn("pm10_lag_1h", feature_df.columns)
         self.assertIn("no2_roll_mean_3h", feature_df.columns)
         self.assertNotIn("pm10", feature_df.drop(columns=["pm25"]).columns)
+
+    def test_build_tabular_features_supports_daily_windows(self):
+        index = pd.date_range("2026-01-01", periods=45, freq="D")
+        df = pd.DataFrame(
+            {
+                "pm25": range(45),
+                "pm10": range(100, 145),
+                "no2": range(200, 245),
+            },
+            index=index,
+        )
+
+        feature_df = build_tabular_features(df, target_col="pm25", frequency="D")
+
+        self.assertIn("pm25_lag_7d", feature_df.columns)
+        self.assertIn("pm10_roll_mean_14d", feature_df.columns)
+        self.assertNotIn("pm25_lag_24h", feature_df.columns)
