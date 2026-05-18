@@ -20,6 +20,7 @@ SUPPORTED_SOURCES = Constants.SUPPORTED_SOURCES
 WEATHER_COLUMNS = Alias.WEATHER_COLUMNS
 POLLUTANT_COLUMNS = Alias.POLLUTANT_COLUMNS
 UCI_COLUMN_ALIASES = Alias.UCI_COLUMN_ALIASES
+TIME_COLUMN_CANDIDATES = Alias.TIME_COLUMN_CANDIDATES
 
 HOURLY_FREQUENCIES = {"h", "hour", "hourly"}
 DAILY_FREQUENCIES = {"d", "day", "daily"}
@@ -54,6 +55,48 @@ def _load_parquet(source: str) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
+def _resolve_data_path(path: str | Path) -> Path:
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = Path(settings.BASE_DIR) / candidate
+    return candidate
+
+
+def _ensure_datetime_index(df: pd.DataFrame, source_label: str) -> pd.DataFrame:
+    if isinstance(df.index, pd.DatetimeIndex):
+        return df
+
+    lookup = {str(column).strip().lower(): column for column in df.columns}
+    for candidate in TIME_COLUMN_CANDIDATES:
+        source_column = lookup.get(candidate)
+        if source_column is None:
+            continue
+        result = df.copy()
+        result[source_column] = pd.to_datetime(result[source_column], errors="coerce")
+        result = result.dropna(subset=[source_column]).set_index(source_column)
+        return result
+
+    raise ValueError(
+        f"{source_label} must have a DatetimeIndex or one of these time columns: "
+        f"{TIME_COLUMN_CANDIDATES}"
+    )
+
+
+def _load_data_file(path: str | Path) -> pd.DataFrame:
+    resolved_path = _resolve_data_path(path)
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"Data source not found: {resolved_path}")
+
+    suffix = resolved_path.suffix.lower()
+    if suffix == ".parquet":
+        df = pd.read_parquet(resolved_path)
+    elif suffix == ".csv":
+        df = pd.read_csv(resolved_path)
+    else:
+        raise ValueError(f"Unsupported data file extension '{suffix}'. Use .parquet or .csv.")
+    return _ensure_datetime_index(df, str(resolved_path))
+
+
 def _load_from_db(
     pollutant: str,
     start_date: Any = None,
@@ -83,7 +126,7 @@ def _load_from_db(
     return pd.DataFrame.from_records(records)
 
 
-def _align_uci_schema(df: pd.DataFrame) -> pd.DataFrame:
+def _align_schema(df: pd.DataFrame) -> pd.DataFrame:
     aligned = df.copy()
     normalized_lookup = {column: str(column).strip().lower() for column in aligned.columns}
     aligned = aligned.rename(columns=normalized_lookup)
@@ -114,7 +157,7 @@ def _prepare_single_source_frame(
     include_pollutant_covariates: bool = True
 ) -> pd.DataFrame:
     resolved_frequency = _normalize_frequency(frequency, source)
-    aligned_df = _align_uci_schema(raw_df) if source == "parquet_uci" else raw_df.copy()
+    aligned_df = _align_schema(raw_df)
     selected_df = _select_relevant_columns(
         aligned_df,
         pollutant,
@@ -132,36 +175,52 @@ def _prepare_single_source_frame(
 def merge_training_sources(
     pollutant: str = "pm25",
     frequency: str | None = None,
+    file_paths: list[str | Path] | tuple[str | Path, ...] | None = None,
     clip_outliers: bool = False,
     include_pollutant_covariates: bool = True,
 ) -> pd.DataFrame:
     resolved_frequency = _normalize_frequency(frequency, "merged")
-    frames = [
-        _prepare_single_source_frame(
-            _load_parquet("parquet_uci"),
-            pollutant,
-            "parquet_uci",
-            resolved_frequency,
-            clip_outliers,
-            include_pollutant_covariates=include_pollutant_covariates,
-        )
-    ]
-    if resolved_frequency == "D":
+    frames: list[pd.DataFrame] = []
+
+    if file_paths:
+        for path in file_paths:
+            frames.append(
+                _prepare_single_source_frame(
+                    _load_data_file(path),
+                    pollutant,
+                    str(path),
+                    resolved_frequency,
+                    clip_outliers,
+                    include_pollutant_covariates=include_pollutant_covariates,
+                )
+            )
+    else:
         frames.append(
             _prepare_single_source_frame(
-                _load_parquet("parquet_hanoi"),
+                _load_parquet("parquet_uci"),
                 pollutant,
-                "parquet_hanoi",
+                "parquet_uci",
                 resolved_frequency,
                 clip_outliers,
                 include_pollutant_covariates=include_pollutant_covariates,
             )
         )
-    else:
-        logger.warning(
-            "Skipping parquet_hanoi in hourly merged source because it is daily data; "
-            "use frequency='D' to build a daily merged training frame."
-        )
+        if resolved_frequency == "D":
+            frames.append(
+                _prepare_single_source_frame(
+                    _load_parquet("parquet_hanoi"),
+                    pollutant,
+                    "parquet_hanoi",
+                    resolved_frequency,
+                    clip_outliers,
+                    include_pollutant_covariates=include_pollutant_covariates,
+                )
+            )
+        else:
+            logger.warning(
+                "Skipping parquet_hanoi in hourly merged source because it is daily data; "
+                "pass explicit hourly files with --hourly-files/--data-files if needed."
+            )
 
     merged_df = pd.concat(frames, axis=0).sort_index()
     return merged_df[~merged_df.index.duplicated(keep="last")]
@@ -176,13 +235,18 @@ def load_data(
     return_report: bool = False,
     clip_outliers: bool = False,
     frequency: str = None,
+    file_paths: list[str | Path] | tuple[str | Path, ...] | None = None,
     include_pollutant_covariates: bool = True
 ) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, Any]]:
     """
     Load and prepare forecasting data from parquet (research), DB/AirData (production), or merged sources.
     """
+    if file_paths:
+        source = "files"
     if source not in SUPPORTED_SOURCES:
         raise ValueError(f"source must be one of {sorted(SUPPORTED_SOURCES)}")
+    if source == "files" and not file_paths:
+        raise ValueError("file_paths must be provided when source='files'.")
 
     resolved_frequency = _normalize_frequency(frequency, source)
 
@@ -194,8 +258,8 @@ def load_data(
     if source == "db":
         raw_df = _load_from_db(pollutant=pollutant, start_date=start_date, end_date=end_date, location=location, include_pollutant_covariates=include_pollutant_covariates)
         prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, resolved_frequency, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
-    elif source == "merged":
-        prepared_df = merge_training_sources(pollutant=pollutant, frequency=resolved_frequency, clip_outliers=clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
+    elif source in {"merged", "files"}:
+        prepared_df = merge_training_sources(pollutant=pollutant, frequency=resolved_frequency, file_paths=file_paths, clip_outliers=clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
     else:
         raw_df = _load_parquet(source)
         prepared_df = _prepare_single_source_frame(raw_df, pollutant, source, resolved_frequency, clip_outliers, include_pollutant_covariates=include_pollutant_covariates)
