@@ -3,7 +3,7 @@
 Hệ thống giám sát chất lượng không khí đô thị thời gian thực sử dụng AI, IoT và MLOps.
 
 **Phiên bản:** 1.0 (MVP)  
-**Thời gian thực hiện:** Tháng 2/2026  
+**Thời gian thực hiện:** Tháng 3/2026  
 **Tác giả:** Quân
 
 ---
