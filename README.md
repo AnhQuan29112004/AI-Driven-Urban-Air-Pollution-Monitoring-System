@@ -67,7 +67,7 @@ Dự án được thiết kế theo phong cách **production-oriented**, dễ m�
 - Tính AQI, Great Expectations
 - DVC versioning
 
-### **Tuần 2**: Realtime IoT Pipeline (Hoàn thành)
+### Realtime IoT Pipeline (Hoàn thành)
 - MQTT simulation (Hà Nội dataset)
 - Celery ingestion + AQI calculation
 - Django models + WebSocket
